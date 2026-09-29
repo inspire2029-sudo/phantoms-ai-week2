@@ -1,73 +1,106 @@
-# PHANTOMS AI Team — Week 2 Capstone
+# PHANTOMS AI — Week 2
 
-This repository contains the Week 2 Backend Foundations capstone and the mini integration work.
+## Backend Engineering Capstone
 
-## Project goal
+A small backend integration project that connects an external API, a SQLite persistence layer, and a Flask webhook into one reproducible workflow.
 
-The project connects the Week 2 backend pieces into one simple flow:
+**Core flow**
 
-**External API → SQLite database → Webhook**
+`OpenWeather API → SQLite → Webhook → SQLite`
 
-The same project also documents an appointment booking database design and debugs a SQL aggregation query.
+## What I built
+
+- External API client for OpenWeather
+- SQLite persistence layer
+- Flask webhook receiver
+- API → database → webhook pipeline
+- Automated tests for project structure and database schema
+- Appointment-booking database design
+- SQL JOIN and aggregation debugging
 
 ## Repository structure
 
 ```text
 phantoms-ai-week2/
+├── .github/
+│   └── workflows/
+│       └── tests.yml
 ├── data/
-│   └── store.db              # generated SQLite database
+│   └── store.db              # generated locally, ignored by Git
 ├── src/
 │   ├── api.py                # OpenWeather API client
 │   ├── database.py           # SQLite storage layer
 │   ├── pipeline.py           # API → DB → webhook pipeline
 │   └── webhook.py            # Flask webhook receiver
 ├── tests/
-│   └── test_project.py       # basic structure and database checks
-├── main.py                   # pipeline entry point
+│   └── test_project.py       # project and database checks
+├── .env.example              # local configuration template
+├── .gitignore
+├── main.py
 ├── requirements.txt
-├── db_design.md              # appointment booking schema
-└── debug_solution.sql        # corrected SQL query and explanation
+├── db_design.md
+└── debug_solution.sql
 ```
 
 ## Setup
 
-Create a virtual environment if desired, then install dependencies:
+### 1. Create a virtual environment
+
+```bash
+python -m venv .venv
+```
+
+Activate it on Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Activate it on Windows PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Set the required environment variables.
+### 3. Configure environment variables
 
-### OpenWeather API key
+Copy `.env.example` to `.env` and provide your local values.
 
-```bash
-export OPENWEATHER_API_KEY="YOUR_OPENWEATHER_API_KEY"
-```
+Required variables:
 
-On Windows PowerShell:
+- `OPENWEATHER_API_KEY`
+- `WEBHOOK_URL`
 
-```powershell
-$env:OPENWEATHER_API_KEY="YOUR_OPENWEATHER_API_KEY"
-```
+Optional controls:
 
-### Webhook URL
+- `PIPELINE_CYCLES` — default: `3`
+- `PIPELINE_INTERVAL` — default: `30` seconds
 
-Start the Flask webhook receiver first:
+The application reads secrets from environment variables. Real credentials must never be committed.
+
+## Run the webhook
+
+Start the Flask receiver first:
 
 ```bash
 python -m src.webhook
 ```
 
-Then set:
+The local endpoint is:
 
-```bash
-export WEBHOOK_URL="http://127.0.0.1:5000/webhook"
+```text
+http://127.0.0.1:5000/webhook
 ```
 
-For a public webhook such as an ngrok endpoint, use the current endpoint instead. Public ngrok URLs can change when a session ends.
+For a public webhook endpoint, replace `WEBHOOK_URL` with the current endpoint.
 
-## Run the integrated pipeline
+## Run the pipeline
 
 From the repository root:
 
@@ -75,69 +108,64 @@ From the repository root:
 python main.py
 ```
 
-By default it runs 3 cycles with a 30-second interval.
+Each cycle:
 
-Optional controls:
+1. Fetches weather data from OpenWeather
+2. Stores the response in SQLite
+3. Sends the JSON payload to the webhook
+4. Stores the received payload in SQLite
 
-```bash
-export PIPELINE_CYCLES="3"
-export PIPELINE_INTERVAL="30"
-```
-
-The pipeline performs:
-
-1. Fetch weather data from OpenWeather.
-2. Store the API response in SQLite table `api_logs`.
-3. Send the same JSON payload to the webhook.
-4. The webhook stores the received payload in `webhook_logs`.
-
-## Run the tests
+## Run tests
 
 ```bash
 pytest -q
 ```
 
-The tests verify the required project structure and the SQLite tables used by the integration.
+The repository also includes a GitHub Actions workflow that runs the test suite automatically on pushes and pull requests targeting `main`.
 
-## W2D5 database design
+## Database design
 
-`db_design.md` documents an appointment booking system with:
+[`db_design.md`](db_design.md) documents a compact appointment-booking schema containing:
 
-- multiple patients
-- multiple doctors
-- one patient and one doctor per appointment
-- appointment start and end times
-- explicit appointment status
-- preserved cancelled appointments
+- Patients
+- Doctors
+- Appointments
+- Appointment status
+- Start and end times
+- Preserved cancellation history
 
-Cancelled bookings are retained by changing their status rather than deleting the appointment row. This keeps historical booking data available.
+The design intentionally stays within the scope of a backend foundations exercise rather than attempting to model a complete medical platform.
 
-## W2D5 SQL debugging
+## SQL debugging
 
-`debug_solution.sql` fixes two issues in the supplied query:
+[`debug_solution.sql`](debug_solution.sql) demonstrates two important SQL concepts:
 
-1. A condition on the right-side table was placed in `WHERE`, which removes customers without matching completed orders. The condition is moved into the `LEFT JOIN ... ON` clause.
-2. `customer_name` is selected but was not included in `GROUP BY`. The corrected query groups by both customer ID and customer name.
+1. Keeping a `LEFT JOIN` effective by placing the right-table filter in the `ON` clause.
+2. Grouping by every selected non-aggregated column.
 
-`COALESCE(SUM(...), 0)` is used so customers with no completed orders receive a total of zero.
+It also uses `COALESCE` so customers with no completed orders receive a total of zero.
 
 ## Engineering decisions
 
-- Secrets are read from environment variables and are not committed to the repository.
-- SQLite is used because the capstone needs a lightweight local database.
-- The database layer is separated from the API, webhook, and pipeline logic.
-- The webhook accepts JSON through POST only.
-- Database writes use parameterized SQL.
-- The pipeline fails explicitly when required configuration is missing or an HTTP request fails.
-- The appointment schema is intentionally small and does not attempt to model authentication, payments, prescriptions, or full medical records.
+- Configuration and secrets are separated from source code.
+- Generated SQLite data is ignored by Git.
+- Database connections use context managers for reliable cleanup.
+- Timestamps are stored in UTC.
+- SQL writes use parameterized queries.
+- HTTP requests use explicit timeouts.
+- Runtime configuration is validated before the pipeline starts.
+- The project is intentionally small so each backend component remains easy to inspect.
 
-## Source references
+## Security considerations
 
-The task research also used the supplied database and SQL JOIN tutorials:
+This is a learning project, not a production webhook service.
 
-- https://www.youtube.com/watch?v=qCIFuoN32cM
-- https://www.youtube.com/watch?v=8grUQO38J6A
+The webhook currently accepts JSON without authentication or signature verification. A production implementation should add authentication, request validation, rate limiting, structured logging, and appropriate network controls.
 
-## Security note
+Never commit API keys, webhook secrets, `.env` files, or other credentials.
 
-Do not commit an actual API key, webhook secret, or other credential. Use environment variables or a local secret manager instead.
+## Learning direction
+
+This project is part of my progression from software and backend foundations toward **cybersecurity, AI security, and eventually LLM Red Teaming**.
+
+> Build it. Break it. Understand it. Document it.
