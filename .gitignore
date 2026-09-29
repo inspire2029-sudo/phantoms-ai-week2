@@ -1,4 +1,25 @@
+# Python
 __pycache__/
 .pytest_cache/
-*.pyc
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files and secrets
 .env
+
+# Generated local database
+data/*.db
+
+# Coverage
+.coverage
+htmlcov/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
