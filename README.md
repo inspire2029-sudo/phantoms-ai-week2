@@ -17,6 +17,7 @@ A small backend integration project that connects an external API, a SQLite pers
 - Automated tests for project structure and database schema
 - Appointment-booking database design
 - SQL JOIN and aggregation debugging
+- Environment-based configuration for secrets and runtime settings
 
 ## Repository structure
 
@@ -41,6 +42,25 @@ phantoms-ai-week2/
 ├── db_design.md
 └── debug_solution.sql
 ```
+
+## Notebooks
+
+### W2D1 — SQL Foundations
+`W2D1_SQL_Foundations.ipynb`
+
+Introduces SQLite database creation, table design, inserts, filtering, and sorting.
+
+### W2D3 — Webhooks & Flask
+`W2D3_Webhooks_+_Flask_Basics.ipynb`
+
+Builds a Flask webhook endpoint, validates JSON requests, and stores received payloads.
+
+### W2D4 — Automation Pipeline
+`W2D4_Automation_Pipeline.ipynb`
+
+Connects the weather API, SQLite logging, webhook delivery, and repeated pipeline execution.
+
+The notebook uses Google Colab Secrets for the API key and webhook URL rather than storing credentials in source code.
 
 ## Setup
 
@@ -72,97 +92,81 @@ pip install -r requirements.txt
 
 Copy `.env.example` to `.env` and provide your local values.
 
-Required variables:
+Required:
 
 - `OPENWEATHER_API_KEY`
 - `WEBHOOK_URL`
 
-Optional controls:
+Optional:
 
 - `PIPELINE_CYCLES` — default: `3`
 - `PIPELINE_INTERVAL` — default: `30` seconds
 
-The application reads secrets from environment variables. Real credentials must never be committed.
+Real credentials must never be committed.
 
 ## Run the webhook
 
-Start the Flask receiver first:
+`python -m src.webhook`
 
-```bash
-python -m src.webhook
-```
+Endpoint:
 
-The local endpoint is:
-
-```text
-http://127.0.0.1:5000/webhook
-```
-
-For a public webhook endpoint, replace `WEBHOOK_URL` with the current endpoint.
+`http://127.0.0.1:5000/webhook`
 
 ## Run the pipeline
 
-From the repository root:
-
-```bash
-python main.py
-```
+`python main.py`
 
 Each cycle:
 
-1. Fetches weather data from OpenWeather
+1. Fetches weather data
 2. Stores the response in SQLite
-3. Sends the JSON payload to the webhook
+3. Sends a JSON payload to the webhook
 4. Stores the received payload in SQLite
 
 ## Run tests
 
-```bash
-pytest -q
-```
+`pytest -q`
 
-The repository also includes a GitHub Actions workflow that runs the test suite automatically on pushes and pull requests targeting `main`.
+GitHub Actions also runs tests automatically on pushes and pull requests to `main`.
 
 ## Database design
 
-[`db_design.md`](db_design.md) documents a compact appointment-booking schema containing:
+`db_design.md` documents:
 
 - Patients
 - Doctors
 - Appointments
 - Appointment status
-- Start and end times
+- Start/end times
 - Preserved cancellation history
-
-The design intentionally stays within the scope of a backend foundations exercise rather than attempting to model a complete medical platform.
 
 ## SQL debugging
 
-[`debug_solution.sql`](debug_solution.sql) demonstrates two important SQL concepts:
+`debug_solution.sql` demonstrates:
 
-1. Keeping a `LEFT JOIN` effective by placing the right-table filter in the `ON` clause.
-2. Grouping by every selected non-aggregated column.
-
-It also uses `COALESCE` so customers with no completed orders receive a total of zero.
+1. Keeping a `LEFT JOIN` effective by placing right-table filters in `ON`
+2. Grouping by all selected non-aggregated columns
+3. `COALESCE` for customers with no completed orders
 
 ## Engineering decisions
 
-- Configuration and secrets are separated from source code.
-- Generated SQLite data is ignored by Git.
-- Database connections use context managers for reliable cleanup.
-- Timestamps are stored in UTC.
-- SQL writes use parameterized queries.
-- HTTP requests use explicit timeouts.
-- Runtime configuration is validated before the pipeline starts.
-- The project is intentionally small so each backend component remains easy to inspect.
+- Configuration and secrets separated from source
+- Generated SQLite ignored by Git
+- Context managers for DB cleanup
+- UTC timestamps
+- Parameterized SQL
+- HTTP timeouts
+- Runtime configuration validation
+- Small, inspectable components
+- Automated CI tests
 
 ## Security considerations
 
 This is a learning project, not a production webhook service.
 
-The webhook currently accepts JSON without authentication or signature verification. A production implementation should add authentication, request validation, rate limiting, structured logging, and appropriate network controls.
+The webhook currently accepts JSON without authentication or signature verification. A production implementation should add authentication, request validation, rate limiting, structured logging, and network controls.
 
-Never commit API keys, webhook secrets, `.env` files, or other credentials.
+Never commit API keys, webhook secrets, `.env` files, or credentials.
 
 ## Learning direction
 
